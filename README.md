@@ -34,13 +34,14 @@ go build -o le-password.exe .
 ## Utilisation
 
 ```sh
-le-password.exe [-l longueur] [-n nombre]
+le-password.exe [-l longueur] [-n nombre] [-export fichier]
 ```
 
 | Option | Description | Défaut |
 |--------|-------------|--------|
 | `-l`   | Longueur de chaque mot de passe (minimum 4) | `16` |
 | `-n`   | Nombre de mots de passe à générer (minimum 1) | `1` |
+| `-export` | Exporte les mots de passe dans un fichier au lieu de les afficher | aucun |
 
 Exemples :
 
@@ -48,6 +49,15 @@ Exemples :
 le-password.exe                # un mot de passe de 16 caractères
 le-password.exe -l 32          # un mot de passe de 32 caractères
 le-password.exe -l 20 -n 5     # cinq mots de passe de 20 caractères
+le-password.exe -n 3 -export mdp.txt   # trois mots de passe exportés dans mdp.txt
+```
+
+Avec `-export`, le fichier contient une ligne par mot de passe :
+
+```
+1: XKDI$G2qKIu$Vn3p
+2: JkP]U7Eb1!3QwZ8a
+3: >,tMfRls6Uxm@Hd2
 ```
 
 ## Structure du projet
