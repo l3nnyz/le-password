@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -35,7 +36,8 @@ var (
 )
 
 type model struct {
-	passwords []string
+	passwords  []string
+	exportPath string
 }
 
 func (m model) Init() tea.Cmd { return tea.Quit }
@@ -44,11 +46,17 @@ func (m model) Update(tea.Msg) (tea.Model, tea.Cmd) { return m, nil }
 
 func (m model) View() string {
 	n := len(m.passwords)
-	label := "passwords generated"
+	noun := "passwords"
 	if n == 1 {
-		label = "password generated"
+		noun = "password"
 	}
-	header := countStyle.Render(strconv.Itoa(n)) + labelStyle.Render(label)
+
+	if m.exportPath != "" {
+		header := countStyle.Render(strconv.Itoa(n)) + labelStyle.Render(noun+" exported to")
+		return "\n" + header + "\n" + boxStyle.Render(passwordStyle.Render(m.exportPath)) + "\n"
+	}
+
+	header := countStyle.Render(strconv.Itoa(n)) + labelStyle.Render(noun+" generated")
 
 	lines := make([]string, n)
 	for i, p := range m.passwords {
@@ -61,6 +69,7 @@ func (m model) View() string {
 func main() {
 	length := flag.Int("l", 16, "password length")
 	count := flag.Int("n", 1, "number of passwords to generate")
+	export := flag.String("export", "", "export the passwords to this file")
 	flag.Parse()
 
 	passwords, err := GenerateMany(*length, *count)
@@ -69,8 +78,31 @@ func main() {
 		os.Exit(1)
 	}
 
-	if _, err := tea.NewProgram(model{passwords: passwords}).Run(); err != nil {
+	m := model{passwords: passwords}
+	if *export != "" {
+		path, err := exportPasswords(*export, passwords)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			os.Exit(1)
+		}
+		m.exportPath = path
+	}
+
+	if _, err := tea.NewProgram(m, tea.WithInput(nil)).Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(1)
 	}
+}
+
+// exportPasswords writes the passwords to path as "1: password" lines
+// and returns the absolute path of the file.
+func exportPasswords(path string, passwords []string) (string, error) {
+	var b strings.Builder
+	for i, p := range passwords {
+		fmt.Fprintf(&b, "%d: %s\n", i+1, p)
+	}
+	if err := os.WriteFile(path, []byte(b.String()), 0o600); err != nil {
+		return "", err
+	}
+	return filepath.Abs(path)
 }
