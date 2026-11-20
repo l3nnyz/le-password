@@ -35,6 +35,13 @@ var (
 	passwordStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#04B575"))
 )
 
+// Maximum number of passwords per run: displaying more than a hundred
+// in the console is unreadable, a file can hold more.
+const (
+	maxConsoleCount = 100
+	maxExportCount  = 1000
+)
+
 type model struct {
 	passwords  []string
 	exportPath string
@@ -71,6 +78,19 @@ func main() {
 	count := flag.Int("n", 1, "number of passwords to generate")
 	export := flag.String("export", "", "export the passwords to this file")
 	flag.Parse()
+
+	maxCount := maxConsoleCount
+	if *export != "" {
+		maxCount = maxExportCount
+	}
+	if *count > maxCount {
+		fmt.Fprintf(os.Stderr, "error: count must be at most %d", maxCount)
+		if *export == "" {
+			fmt.Fprintf(os.Stderr, " (up to %d with -export)", maxExportCount)
+		}
+		fmt.Fprintln(os.Stderr)
+		os.Exit(1)
+	}
 
 	passwords, err := GenerateMany(*length, *count)
 	if err != nil {

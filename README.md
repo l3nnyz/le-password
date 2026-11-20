@@ -40,7 +40,7 @@ le-password.exe [-l longueur] [-n nombre] [-export fichier]
 | Option | Description | Défaut |
 |--------|-------------|--------|
 | `-l`   | Longueur de chaque mot de passe (minimum 4) | `16` |
-| `-n`   | Nombre de mots de passe à générer (minimum 1) | `1` |
+| `-n`   | Nombre de mots de passe à générer (minimum 1, maximum 100 en console, 1000 avec `-export`) | `1` |
 | `-export` | Exporte les mots de passe dans un fichier au lieu de les afficher | aucun |
 
 Exemples :
