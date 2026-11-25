@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"strings"
 	"unsafe"
 )
 
@@ -11,6 +13,31 @@ var charClasses = []string{
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZ",
 	"0123456789",
 	"!@#$%^&*()-_=+[]{};:,.<>?/~",
+}
+
+var pool = strings.Join(charClasses, "")
+
+const rngBufferSize = 4096
+
+type rng struct {
+	buf []byte
+	pos int
+}
+
+func newRNG() *rng {
+	return &rng{buf: make([]byte, rngBufferSize), pos: rngBufferSize}
+}
+
+func (r *rng) uint32() (uint32, error) {
+	if r.pos+4 > len(r.buf) {
+		if err := randomBytes(r.buf); err != nil {
+			return 0, err
+		}
+		r.pos = 0
+	}
+	v := binary.LittleEndian.Uint32(r.buf[r.pos:])
+	r.pos += 4
+	return v, nil
 }
 
 func randomBytes(buf []byte) error {
@@ -29,14 +56,13 @@ func randomBytes(buf []byte) error {
 	return nil
 }
 
-func randomIndex(n int) (int, error) {
+func randomIndex(r *rng, n int) (int, error) {
 	limit := ^uint32(0) - (^uint32(0) % uint32(n))
-	var b [4]byte
 	for {
-		if err := randomBytes(b[:]); err != nil {
+		v, err := r.uint32()
+		if err != nil {
 			return 0, err
 		}
-		v := uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24
 		if v < limit {
 			return int(v % uint32(n)), nil
 		}
@@ -44,18 +70,17 @@ func randomIndex(n int) (int, error) {
 }
 
 func Generate(length int) (string, error) {
+	return generate(newRNG(), length)
+}
+
+func generate(r *rng, length int) (string, error) {
 	if length < len(charClasses) {
 		return "", fmt.Errorf("length must be at least %d", len(charClasses))
 	}
 
-	var pool string
-	for _, c := range charClasses {
-		pool += c
-	}
-
 	out := make([]byte, 0, length)
 	pick := func(set string) error {
-		i, err := randomIndex(len(set))
+		i, err := randomIndex(r, len(set))
 		if err != nil {
 			return err
 		}
@@ -75,7 +100,7 @@ func Generate(length int) (string, error) {
 	}
 
 	for i := len(out) - 1; i > 0; i-- {
-		j, err := randomIndex(i + 1)
+		j, err := randomIndex(r, i+1)
 		if err != nil {
 			return "", err
 		}
@@ -88,9 +113,10 @@ func GenerateMany(length, count int) ([]string, error) {
 	if count < 1 {
 		return nil, errors.New("count must be at least 1")
 	}
+	r := newRNG()
 	list := make([]string, 0, count)
 	for i := 0; i < count; i++ {
-		p, err := Generate(length)
+		p, err := generate(r, length)
 		if err != nil {
 			return nil, err
 		}
